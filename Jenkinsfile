@@ -2,6 +2,8 @@ pipeline {
     agent any
 
     environment {
+        AWS_REGION = "ap-south-1"
+        ECR_REPO = "842903729653.dkr.ecr.ap-south-1.amazonaws.com/nodeapp"
         DOCKER_IMAGE = "guruyogendra/nodeapp"
     }
 
@@ -9,46 +11,49 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                echo "Cloning the GitHub repository..."
+                echo "📥 Cloning repository..."
                 git branch: 'main', url: 'https://github.com/guruyogendra/devops-docker.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo "Installing Node.js dependencies..."
+                echo "📦 Installing Node.js dependencies..."
                 sh 'npm install'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
+                echo "🐳 Building Docker image..."
                 sh 'docker build -t $DOCKER_IMAGE:latest .'
             }
         }
 
-        stage('Push Docker Image to Docker Hub') {
+        stage('Login to Docker Hub') {
             steps {
-                echo "Logging into Docker Hub and pushing the image..."
-                withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKERHUB_PASS')]) {
+                echo "🔐 Logging into Docker Hub..."
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
-                    echo "$DOCKERHUB_PASS" | docker login -u guruyogendra --password-stdin
-                    docker push $DOCKER_IMAGE:latest
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
             }
         }
 
+        stage('Push Docker Image to Docker Hub') {
+            steps {
+                echo "⬆️ Pushing image to Docker Hub..."
+                sh 'docker push $DOCKER_IMAGE:latest'
+            }
+        }
+
         stage('Deploy Application on EC2') {
             steps {
-                echo "Deploying container on EC2 instance..."
+                echo "🚀 Deploying container on EC2..."
                 sh '''
-                # Stop and remove any running container
                 docker stop nodeapp || true
                 docker rm nodeapp || true
-
-                # Pull latest image and run
                 docker pull $DOCKER_IMAGE:latest
                 docker run -d -p 80:3000 --name nodeapp $DOCKER_IMAGE:latest
                 '''
@@ -58,14 +63,10 @@ pipeline {
 
     post {
         success {
-            mail to: 'your-email@example.com',
-                 subject: 'Jenkins Pipeline Success - NodeApp Deployed!',
-                 body: 'The Node.js application has been successfully built, pushed to Docker Hub, and deployed on EC2.'
+            echo '✅ Deployment Successful!'
         }
         failure {
-            mail to: 'your-email@example.com',
-                 subject: 'Jenkins Pipeline Failed!',
-                 body: 'The Jenkins pipeline failed. Please check the Jenkins console logs for details.'
+            echo '❌ Deployment Failed! Check Jenkins logs for more info.'
         }
     }
 }
