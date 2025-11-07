@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION = "ap-south-1"
         ECR_REPO = "842903729653.dkr.ecr.ap-south-1.amazonaws.com/nodeapp"
-        DOCKER_IMAGE = "guruyogendra/nodeapp"
+        DOCKER_IMAGE = "guruyogendrareddy/nodeapp"
     }
 
     stages {
